@@ -1,5 +1,7 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <title>64 Commerce Nouveau Site</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap">
@@ -84,6 +86,8 @@ section.blk{padding-block:56px}
 .price small{font:400 13px var(--body);color:var(--muted)}
 .pm{font:600 15px var(--body);color:var(--fg)}
 .fav-first{font-size:13px;color:var(--muted)}
+.lmap{width:100%;position:relative;z-index:0}.lmap .leaflet-container{height:100%;width:100%;font-family:var(--body)}
+.cl{width:34px;height:34px;border-radius:50%;background:#c4161c;color:#fff;display:grid;place-items:center;font:700 14px var(--body);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 /* services */
 .svc{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px}
 .svc article{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:10px}
@@ -173,7 +177,11 @@ const COAST=[[45.1,-1.14],[45.0,-1.2],[44.66,-1.17],[44.63,-1.25],[44.4,-1.25],[
 const P=(la,lo)=>[(lo+2.1)*181.8,(45.1-la)*250];
 const zoneOf=l=>{const [la,lo]=GEO[l.v];const a=l.id*2.399;return[la+Math.sin(a)*.008,lo+Math.cos(a)*.01]}; // décalage volontaire : l'adresse exacte reste privée
 const nearNames=v=>[v,...['Bordeaux','Dax','Pau','Mont-de-Marsan','Bayonne','Mimizan'].filter(n=>n!==v&&Math.hypot(GEO[n][0]-GEO[v][0],(GEO[n][1]-GEO[v][1])*.72)>.2)];
-function mapSVG({c,w=400,pins=[],zones=[],label='',fs=11,names=true,ar=1.25}){
+function mapSVG({c,w=400,pins=[],zones=[],label='',fs=11,names=true,ar=1.25,lf=null}){
+  const svg=mapSVG0({c,w,pins,zones,label,fs,names,ar});
+  return lf?`<div class="lmap" data-lf='${JSON.stringify(lf).replace(/'/g,'&#39;')}' style="height:${lf.h||320}px">${svg}</div>`:svg;
+}
+function mapSVG0({c,w=400,pins=[],zones=[],label='',fs=11,names=true,ar=1.25}){
   const h=w*ar,[cx,cy]=c?P(...c):[200,250],x=c?cx-w/2:0,y=c?cy-h/2:0;
   const land='M'+COAST.map(p=>P(...p).map(n=>n.toFixed(1)).join(',')).join('L')+'L'+P(43.1,0.1).join(',')+'L'+P(45.1,0.1).join(',')+'Z';
   const dept=[['33',44.75,-0.45],['40',43.95,-0.85],['64',43.18,-0.75]].map(d=>{const [px,py]=P(d[1],d[2]);return `<text x="${px}" y="${py}" font-size="64" font-family="var(--display)" font-weight="700" fill="var(--line)" text-anchor="middle">${d[0]}</text>`}).join('');
@@ -184,7 +192,7 @@ function mapSVG({c,w=400,pins=[],zones=[],label='',fs=11,names=true,ar=1.25}){
 }
 const eur=n=>new Intl.NumberFormat('fr-FR').format(n)+' €';
 const DEPT={64:'Pyrénées-Atlantiques',40:'Landes',33:'Gironde'};
-const L=[
+const LISTINGS=[
 {id:1,t:'Boulangerie-pâtisserie avec laboratoire',type:'Fonds de commerce',tr:'Vente',v:'Bayonne',d:64,p:252080,s:85,ca:410000,loyer:14400,h:200,desc:"Boulangerie bien située dans une rue commerçante du Petit Bayonne, avec laboratoire équipé, deux fours et une clientèle d'habitués. Le local bénéficie d'un bail commercial récent.",pts:['Emplacement numéro 1 à 80 m de la place','Laboratoire aux normes, matériel inclus','Bail 3-6-9 signé en 2024']},
 {id:2,t:'Restaurant avec terrasse et licence IV',type:'Fonds de commerce',tr:'Vente',v:'Saint-Jean-de-Luz',d:64,p:270000,s:95,ca:520000,loyer:21600,h:150,desc:"Restaurant de 40 couverts avec terrasse de 20 places, à deux pas du port. Cuisine professionnelle récemment rénovée, licence IV incluse, forte activité de mai à octobre.",pts:['Terrasse plein sud','Licence IV incluse','Cuisine rénovée en 2023']},
 {id:3,t:'Boutique de prêt-à-porter, droit au bail',type:'Droit au bail',tr:'Cession',v:'Bayonne',d:64,p:46000,s:36,ca:0,loyer:12000,h:60,desc:"Cession du droit au bail d'une boutique de 36 m² en centre-ville, vitrine de 5 mètres, arrière-boutique de 6 m². Flux piétons importants toute l'année.",pts:['Vitrine de 5 m sur rue piétonne','Local refait à neuf','Destination du bail large']},
@@ -230,11 +238,11 @@ function bindSearch(onSub){
 }
 const view={
 accueil(){
-  const feat=[1,2,3,4].map(i=>L.find(x=>x.id===i));
+  const feat=[1,2,3,4].map(i=>LISTINGS.find(x=>x.id===i));
   app.innerHTML=`<section class="hero"><div class="wrap"><div><h1>Votre spécialiste de l'immobilier commercial sur la Côte Basque, les Landes et Bordeaux</h1><p>Fonds de commerce, droit au bail, murs commerciaux, locaux d'activité et bureaux. Nous vous accompagnons de la première visite à la signature.</p><div class="cta"><button class="btn" data-go="annonces">Voir toutes les offres</button><button class="btn light" data-go="vendre">Estimer mon commerce</button></div>
 <div class="kpis"><div><b>3</b><span>départements couverts</span></div><div><b>400+</b><span>biens actuellement suivis</span></div><div><b>1 300</b><span>acquéreurs en recherche</span></div></div></div></div></section>
 <div class="wrap">${searchBar(true,'Rechercher')}</div>
-<section class="blk"><div class="wrap"><div class="head"><div><div class="eyebrow">À la une</div><h2>Nos offres du moment</h2></div><button class="btn alt" data-go="annonces">Toutes nos offres (${L.length})</button></div><div class="grid">${feat.map(card).join('')}</div></div></section>
+<section class="blk"><div class="wrap"><div class="head"><div><div class="eyebrow">À la une</div><h2>Nos offres du moment</h2></div><button class="btn alt" data-go="annonces">Toutes nos offres (${LISTINGS.length})</button></div><div class="grid">${feat.map(card).join('')}</div></div></section>
 <section class="blk" style="background:var(--surface);border-block:1px solid var(--line)"><div class="wrap"><div class="head"><div><div class="eyebrow">Nos services</div><h2>Un projet de cession, d'acquisition ou de recherche de local ?</h2><p>Quel que soit votre projet, nous vous accompagnons du début jusqu'à la remise des clés.</p></div></div>
 <div class="svc"><article><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg><h3>Vous souhaitez acheter</h3><p>Acquéreur d'un fonds de commerce, d'un droit au bail ou de murs : dites-nous votre activité, la surface et votre budget. Nous vous présentons les biens adaptés, y compris avant leur mise en ligne.</p><button class="link" data-go="contact" data-w="Acquéreur">Déposer ma recherche →</button></article>
 <article><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg><h3>Vous souhaitez vendre un fonds de commerce</h3><p>Estimation, mise en valeur, sélection des repreneurs solvables et suivi jusqu'à l'acte.</p><button class="link" data-go="vendre">Estimer mon fonds →</button></article>
@@ -254,8 +262,8 @@ annonces(){
   renderList();
 },
 fiche(id){
-  const l=L.find(x=>x.id===id);if(!l)return go('annonces');
-  const ref='64C-'+String(l.id).padStart(4,'0'),sim=L.filter(x=>x.id!==l.id&&(x.type===l.type||x.d===l.d)).slice(0,3);
+  const l=LISTINGS.find(x=>x.id===id);if(!l)return go('annonces');
+  const ref='64C-'+String(l.id).padStart(4,'0'),sim=LISTINGS.filter(x=>x.id!==l.id&&(x.type===l.type||x.d===l.d)).slice(0,3);
   const fin=l.type==='Fonds de commerce'?`<h2>Éléments financiers</h2><div class="tw"><table><tr><th>Chiffre d'affaires annuel</th><td>${eur(l.ca)}</td></tr><tr><th>Loyer annuel hors charges</th><td>${eur(l.loyer)}</td></tr><tr><th>Loyer mensuel hors charges</th><td>${eur(Math.round(l.loyer/12/10)*10)}</td></tr><tr><th>Prix de vente du fonds</th><td>${eur(l.p)}</td></tr><tr><th>Honoraires</th><td>Charge acquéreur, détail en agence</td></tr></table></div>`:
     l.type==='Droit au bail'||l.type==='Murs commerciaux'?`<h2>Éléments financiers</h2><div class="tw"><table><tr><th>${l.type==='Murs commerciaux'?'Loyer perçu':'Loyer'} annuel hors charges</th><td>${eur(l.loyer)}</td></tr><tr><th>Loyer mensuel hors charges</th><td>${eur(Math.round(l.loyer/12/10)*10)}</td></tr><tr><th>Prix</th><td>${eur(l.p)}</td></tr>${l.type==='Murs commerciaux'?`<tr><th>Rendement brut</th><td>${(l.loyer/l.p*100).toFixed(1).replace('.',',')} %</td></tr>`:''}</table></div>`:'';
   app.innerHTML=`<div class="wrap"><div class="crumb"><a data-go="accueil">Accueil</a> › <a data-go="annonces">Nos offres</a> › ${l.v}</div>
@@ -263,7 +271,7 @@ fiche(id){
 <div class="eyebrow" style="margin-top:22px">${l.type} · ${l.tr==='Vente'?'À vendre':l.tr==='Cession'?'Cession':'À louer'}</div><h1>${l.t}</h1><div class="loc" style="margin-top:4px">${l.v} (${l.d}) · ${DEPT[l.d]}</div>
 <div class="facts"><div><span>${kind(l)==='loc'?'Loyer':'Prix'}</span><b>${eur(l.p)}${kind(l)==='loc'?' /an':''}</b>${kind(l)==='loc'?`<span style="margin-top:2px;text-transform:none;letter-spacing:0;font-size:14px">${mois(l)}</span>`:''}</div><div><span>Surface</span><b>${new Intl.NumberFormat('fr-FR').format(l.s)} m²</b></div><div><span>Département</span><b>${l.d}</b></div><div><span>Référence</span><b>${ref}</b></div></div>
 <h2>Description</h2><p>${l.desc}</p><h2>Les points forts</h2><ul class="tick">${l.pts.map(p=>`<li>${p}</li>`).join('')}</ul>${fin}
-<h2>Localisation</h2><div style="border-radius:12px;overflow:hidden;border:1px solid var(--line);max-width:520px">${mapSVG({c:zoneOf(l),w:260,ar:.7,fs:9,names:nearNames(l.v),zones:[{p:zoneOf(l),r:11}],label:'Zone approximative du bien à '+l.v})}</div><p class="loc" style="margin-top:8px">Zone approximative autour de ${l.v}. L'adresse exacte est communiquée après un premier échange, pour préserver la confidentialité du vendeur.</p></div>
+<h2>Localisation</h2><div style="border-radius:12px;overflow:hidden;border:1px solid var(--line);max-width:520px">${mapSVG({c:zoneOf(l),w:260,ar:.7,fs:9,names:nearNames(l.v),zones:[{p:zoneOf(l),r:11}],label:'Zone approximative du bien à '+l.v,lf:{c:zoneOf(l),z:14,circles:[{p:zoneOf(l),r:800}],h:340}})}</div><p class="loc" style="margin-top:8px">Zone approximative autour de ${l.v}. L'adresse exacte est communiquée après un premier échange, pour préserver la confidentialité du vendeur.</p></div>
 <aside class="sticky"><div class="box"><div class="price" style="font-size:30px">${priceHTML(l)}</div><div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap"><button class="btn alt" data-fav="${l.id}" id="favbtn">${favs.includes(l.id)?'♥ Dans mes favoris':'♡ Ajouter aux favoris'}</button></div></div>
 <div class="box"><div class="agent"><div class="av">${['SL','MA','CE','JD'][l.id%4]}</div><div><b>${['Sophie Larralde','Maïder Ainciart','Camille Etcheverry','Julien Dubos'][l.id%4]}</b><div class="loc">Négociateur · exemple</div></div></div><h3 style="font-size:18px;margin:16px 0 10px">Être rappelé ou visiter</h3>
 <form class="lead" id="lead"><label class="f">Nom<input id="l-n" required autocomplete="name"></label><label class="f">Téléphone<input id="l-t" required type="tel" autocomplete="tel"></label><label class="f">Email<input id="l-e" type="email" autocomplete="email"></label><label class="f">Message<textarea id="l-m" style="min-height:70px">Bonjour, je souhaite en savoir plus sur l'annonce ${ref}.</textarea></label><button class="btn" type="submit">Je souhaite être contacté</button></form></div></aside></div>
@@ -322,7 +330,7 @@ contact(){
   const office=n=>`<svg viewBox="0 0 400 200" role="img" aria-label="Illustration de l'agence de ${n}" style="width:100%;height:auto;display:block"><rect width="400" height="200" fill="var(--soft)"/><rect x="60" y="30" width="280" height="150" fill="var(--line)"/><rect x="60" y="30" width="280" height="30" fill="#b3121b"/><text x="200" y="52" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="16" fill="#fff">64 COMMERCE · ${n.toUpperCase()}</text><rect x="80" y="80" width="120" height="100" fill="var(--surface)" stroke="var(--muted)"/><rect x="215" y="80" width="105" height="100" fill="var(--surface)" stroke="var(--muted)"/><line x1="260" y1="80" x2="260" y2="180" stroke="var(--muted)"/><rect x="0" y="180" width="400" height="20" fill="var(--muted)" opacity=".5"/></svg>`;
   const showAg=i=>{const g=AG[i];
     document.querySelectorAll('#agtabs button').forEach((b,j)=>{b.className=j===i?'btn':'btn alt';b.setAttribute('aria-selected',j===i)});
-    $('#ag').innerHTML=`<div style="border-radius:12px;overflow:hidden;border:1px solid var(--line)">${mapSVG({c:g.p,w:260,ar:.7,fs:9,names:nearNames(g.n),pins:[{p:g.p}],label:'Plan de l\'agence de '+g.n})}</div>
+    $('#ag').innerHTML=`<div style="border-radius:12px;overflow:hidden;border:1px solid var(--line)">${mapSVG({c:g.p,w:260,ar:.7,fs:9,names:nearNames(g.n),pins:[{p:g.p}],label:'Plan de l\'agence de '+g.n,lf:{c:g.p,z:g.ok?16:13,pins:[{p:g.p,t:'64 Commerce · '+g.n}],h:300}})}</div>
     <dl style="margin:16px 0 0;display:grid;gap:12px"><div><dt>Agence de ${g.n}</dt><dd>${g.a}${g.ok?'':' <small style="font-weight:400;color:var(--muted)">(agence d\'exemple)</small>'}</dd></div><div><dt>Téléphone</dt><dd><a href="tel:+33559030202">${g.t}</a></dd></div><div><dt>Horaires</dt><dd>${g.h}${g.ok?'':' (exemple)'}</dd></div><div><dt>Secteur</dt><dd>${g.z}</dd></div></dl>
     <div style="border-radius:12px;overflow:hidden;border:1px solid var(--line);margin-top:16px">${office(g.n)}<div class="loc" style="padding:8px 12px">Photo des bureaux à ajouter.</div></div>`};
   $('#agtabs').innerHTML=AG.map((g,i)=>`<button class="btn alt" type="button" role="tab" data-ag="${i}">${g.n}</button>`).join('');
@@ -333,7 +341,7 @@ function demoForm(sel,msg){const f=$(sel);f.addEventListener('submit',e=>{e.prev
 let mode='liste';
 function renderList(){
   const want=$('#onlyfav')&&$('#onlyfav').checked;
-  let r=L.filter(l=>(!F.tr||kind(l)===F.tr)&&(!F.v||l.v===F.v)&&(!F.d||l.d==F.d)&&(!F.pmax||l.p<=+F.pmax)&&(!F.smin||l.s>=+F.smin)&&(!F.smax||l.s<=+F.smax)&&(!want||favs.includes(l.id)));
+  let r=LISTINGS.filter(l=>(!F.tr||kind(l)===F.tr)&&(!F.v||l.v===F.v)&&(!F.d||l.d==F.d)&&(!F.pmax||l.p<=+F.pmax)&&(!F.smin||l.s>=+F.smin)&&(!F.smax||l.s<=+F.smax)&&(!want||favs.includes(l.id)));
   const o={rec:(a,b)=>b.id-a.id,pa:(a,b)=>a.p-b.p,pd:(a,b)=>b.p-a.p,sd:(a,b)=>b.s-a.s};r.sort(o[F.sort]);r=[...r.filter(l=>favs.includes(l.id)),...r.filter(l=>!favs.includes(l.id))];
   $('#cnt').textContent=r.length+(r.length>1?' offres trouvées':' offre trouvée')+(F.v?' à '+F.v:'');
   document.querySelectorAll('#vtabs [data-mode]').forEach(b=>b.className=b.dataset.mode===mode?'btn':'btn alt');
@@ -341,10 +349,30 @@ function renderList(){
   const cv=$('#clrv');if(cv)cv.onclick=()=>{F.v='';renderList()};
   const mb=$('#mapbox');mb.hidden=mode!=='carte';
   if(mode==='carte'){const by={};r.forEach(l=>(by[l.v]=by[l.v]||[]).push(l));
-    mb.innerHTML=mapSVG({fs:10,label:'Carte des offres par zone',zones:Object.entries(by).map(([v,a])=>({id:v,p:GEO[v],r:10+Math.min(a.length,4)*2,n:a.length,label:v+' : '+a.length+' offre(s)'}))});
+    mb.innerHTML=mapSVG({fs:10,label:'Carte des offres par zone',zones:Object.entries(by).map(([v,a])=>({id:v,p:GEO[v],r:10+Math.min(a.length,4)*2,n:a.length,label:v+' : '+a.length+' offre(s)'})),lf:{fit:1,c:[44.0,-0.9],z:8,h:460,clusters:Object.entries(by).map(([v,a])=>({id:v,p:GEO[v],n:a.length}))}});
+    if(!mb._z){mb._z=1;mb.addEventListener('zoneclick',e=>{F.v=e.detail;mode='liste';renderList()})}
     mb.querySelectorAll('[data-zone]').forEach(z=>{const f=()=>{F.v=z.dataset.zone;mode='liste';renderList()};z.onclick=f;z.onkeydown=e=>{if(e.key==='Enter')f()}});}
   $('#list').innerHTML=r.length?r.map(card).join(''):'<div class="empty" style="grid-column:1/-1"><b>Aucune offre ne correspond.</b><br>Élargissez le budget ou la surface, ou <a data-go="contact" style="color:var(--accent);cursor:pointer">déposez votre recherche</a> : nous vous prévenons dès qu\'un bien arrive.</div>';
 }
+/* Vraie carte (OpenStreetMap + Leaflet) quand la bibliothèque est chargée ; sinon le dessin reste affiché */
+function initMaps(){
+  if(!window.L)return;
+  document.querySelectorAll('.lmap:not([data-done])').forEach(el=>{
+    el.dataset.done=1;
+    try{
+      const c=JSON.parse(el.dataset.lf);el.innerHTML='';
+      const m=L.map(el,{scrollWheelZoom:false}).setView(c.c,c.z);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(m);
+      (c.circles||[]).forEach(z=>L.circle(z.p,{radius:z.r,color:'#c4161c',weight:2,fillColor:'#c4161c',fillOpacity:.2}).addTo(m));
+      const dot=h=>L.divIcon({className:'',html:h,iconSize:[34,34],iconAnchor:[17,17]});
+      (c.pins||[]).forEach(p=>L.marker(p.p,{icon:dot('<div class="cl">64</div>')}).addTo(m).bindPopup(p.t));
+      const pts=[];
+      (c.clusters||[]).forEach(k=>{pts.push(k.p);L.marker(k.p,{icon:dot('<div class="cl">'+k.n+'</div>'),keyboard:true,title:k.id+' : '+k.n+' offre(s)'}).addTo(m).on('click',()=>el.dispatchEvent(new CustomEvent('zoneclick',{bubbles:true,detail:k.id})))});
+      if(c.fit&&pts.length>1)m.fitBounds(pts,{padding:[30,30]});
+    }catch(e){console.warn('carte',e)}
+  });
+}
+new MutationObserver(initMaps).observe(app,{childList:true,subtree:true});
 function go(h){if(location.hash.slice(1)===h)route();else location.hash=h}
 function route(){
   const h=location.hash.slice(1)||'accueil',m=h.match(/^annonce-(\d+)$/);

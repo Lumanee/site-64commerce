@@ -9,7 +9,7 @@ Site statique (HTML, CSS, JavaScript), sans outil de compilation. Ouvrez `index.
 Les annonces, l'équipe et les chiffres sont fictifs.
 
 ## Prochaines étapes
-1. Vraie carte OpenStreetMap
+1. ~~Vraie carte OpenStreetMap~~ (faite : Leaflet + OpenStreetMap, avec repli sur un dessin si la bibliothèque ne charge pas)
 2. Hébergement gratuit avec lien d'aperçu
 3. Formulaires et newsletter réels
 4. Annonces lues depuis le logiciel
