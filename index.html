@@ -283,7 +283,7 @@ fiche(id){
   demoForm('#lead','Merci. Dans la version réelle, votre demande arrive directement à l\'agence et vous êtes rappelé sous 24 heures.');
 },
 honoraires(){
-  const T={bx:{n:'Bordeaux (33) et Côte Basque (64)',r:[[300000,10],[600000,9],[1000000,8],[2500000,7],[Infinity,6]],min:[7650,6300],loc:[20,30][1]},
+  const T={bx:{n:'Bordeaux (33) et Côte Basque (64)',r:[[300000,10],[600000,9],[1000000,8],[2500000,7],[Infinity,6]],min:[7560,6300],loc:[20,30][1]},
            ld:{n:'Landes (40)',r:[[300000,9],[600000,8],[1000000,7],[2500000,6],[Infinity,5]],min:[6000,5000],loc:20}};
   const LOC={cb:{n:'Landes (40) et Côte Basque (64)',p:20,min:[3600,3000]},bx:{n:'Bordeaux (33)',p:30,min:[3600,3000]}};
   const pc=n=>String(n).replace('.',',')+' %',f=n=>new Intl.NumberFormat('fr-FR',{maximumFractionDigits:2}).format(n);
@@ -301,16 +301,16 @@ honoraires(){
 <p class="loc" style="margin-top:12px">Forfait minimum : <b>3 600 € TTC</b> (3 000 € HT). La rémunération est à la charge de l'acquéreur, sauf convention expresse différente entre les parties.</p>
 <div class="head" style="margin-top:44px"><div><div class="eyebrow">Simulateur</div><h2>Estimer mes honoraires</h2><p>Résultat indicatif, non contractuel. Seul le mandat ou la convention signée fait foi.</p></div></div>
 <div class="box"><form id="hf" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));align-items:end"><label class="f">Type d'opération<select id="h-t"><option value="v">Vente ou cession</option><option value="l">Location</option></select></label><label class="f">Zone<select id="h-z"></select></label><label class="f" id="h-pw">Prix de cession (€)<input id="h-p" type="number" min="0" step="1000" value="250000" inputmode="numeric"></label><label class="f">Loyer annuel HT (€)<input id="h-l" type="number" min="0" step="500" value="18000" inputmode="numeric"></label><button class="btn" type="submit">Calculer</button></form><div id="hres" class="est" style="margin-top:16px" hidden></div></div>
-<p class="loc" style="margin-top:20px">Barème repris du site officiel de l'agence, présenté ici de façon plus lisible. Honoraires TTC au taux de TVA de 20 %.</p></div></section>`;
+<p class="loc" style="margin-top:20px">Barème repris du site officiel de l'agence, présenté ici de façon plus lisible. Honoraires TTC au taux de TVA de 20 %. Le taux de chaque tranche s'applique uniquement à la part du prix comprise dans cette tranche.</p></div></section>`;
   let z='bx';const show=()=>{$('#ht').innerHTML=tbl(z);document.querySelectorAll('#hz button').forEach(b=>{b.className=b.dataset.z===z?'btn':'btn alt';b.setAttribute('aria-selected',b.dataset.z===z)})};
   $('#hz').onclick=e=>{const b=e.target.closest('[data-z]');if(b){z=b.dataset.z;show()}};show();
   const fill=()=>{const v=$('#h-t').value==='v';$('#h-z').innerHTML=v?'<option value="bx">Bordeaux (33) et Côte Basque (64)</option><option value="ld">Landes (40)</option>':'<option value="cb">Landes (40) et Côte Basque (64)</option><option value="bx">Bordeaux (33)</option>';$('#h-pw').hidden=!v};
   $('#h-t').onchange=fill;fill();
-  $('#hf').onsubmit=e=>{e.preventDefault();const v=$('#h-t').value==='v',k=$('#h-z').value,loyer=+$('#h-l').value||0,prix=+$('#h-p').value||0;let ht,rate,base,min,note='';
-    if(v){base=Math.max(prix,loyer);const r=T[k].r.find(x=>base<=x[0]);rate=r[1];min=T[k].min;ht=base*rate/100;if(loyer>prix)note='Le loyer annuel étant supérieur au prix, il sert de base de calcul. '}
-    else{base=loyer;rate=LOC[k].p;min=LOC[k].min;ht=base*rate/100}
+  $('#hf').onsubmit=e=>{e.preventDefault();const v=$('#h-t').value==='v',k=$('#h-z').value,loyer=+$('#h-l').value||0,prix=+$('#h-p').value||0;let ht,rate,base,min,note='',det='';
+    if(v){base=Math.max(prix,loyer);min=T[k].min;ht=0;let prev=0;const parts=[];T[k].r.forEach(r=>{const top=Math.min(base,r[0]);if(top>prev){const a=top-prev,h=a*r[1]/100;ht+=h;parts.push(f(Math.round(a))+' € à '+pc(r[1])+' = '+f(Math.round(h))+' €');prev=top}});det='Calcul par tranche : '+parts.join(' + ')+'. ';if(loyer>prix)note='Le loyer annuel étant supérieur au prix, il sert de base de calcul. '}
+    else{base=loyer;rate=LOC[k].p;min=LOC[k].min;ht=base*rate/100;det='Taux de '+pc(rate)+' HT sur '+f(base)+' €. '}
     const minApplied=ht<min[1];if(minApplied)ht=min[1];const ttc=minApplied?min[0]:ht*1.2;
-    const x=$('#hres');x.hidden=false;x.innerHTML=`<small>Honoraires estimés</small><b>${f(Math.round(ttc))} € TTC</b><small>soit ${f(Math.round(ht))} € HT. ${minApplied?'Le forfait minimum s\'applique. ':'Taux de '+pc(rate)+' HT sur '+f(base)+' €. '}${note}Estimation indicative, à confirmer avec votre négociateur.</small>`};
+    const x=$('#hres');x.hidden=false;x.innerHTML=`<small>Honoraires estimés</small><b>${f(Math.round(ttc))} € TTC</b><small>soit ${f(Math.round(ht))} € HT. ${minApplied?'Le forfait minimum s\'applique. ':det}${note}Estimation indicative, à confirmer avec votre négociateur.</small>`};
 },
 vendre(){
   app.innerHTML=`<section class="page-title"><div class="wrap"><h1>Vendre ou estimer votre bien</h1><p>Obtenez une première fourchette de valeur en 30 secondes, puis un avis argumenté par un négociateur.</p></div></section>
